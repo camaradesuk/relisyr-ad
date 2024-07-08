@@ -20,8 +20,8 @@ shinyUI(fluidPage(
         3,
         selectInput(inputId = "candidateCategory", "Select type of candidate drugs", c("All Candidates in included publications" = "all", 
                                                                                        "Candidates meeting ReLiSyR-AD logic" = "logicOnly"
-                                                                                       # , 
-                                                                                       # "Longlisted candidates only" = "longlist"
+                                                                                        , 
+                                                                                        "Longlisted candidates only" = "longlist"
         )),
         
         br(),hr(),

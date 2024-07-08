@@ -14,8 +14,12 @@ shinyServer(function(input, output, session) {
   
   filteredClinicalStudyList <- reactive({
     clinicalStudyList <- clinicalStudyList()
+    clinicalStudyList <- left_join(clinicalStudyList, reviewStage, by = "idStr")
+    clinicalStudyList <- clinicalStudyList%>%mutate(nReviews = ifelse(is.na(nReviews), 0, nReviews))
     return(clinicalStudyList)
   })
+  
+
   
   outputCrossTable <- reactive({
     filteredClinicalStudyList <- filteredClinicalStudyList()
@@ -35,10 +39,12 @@ shinyServer(function(input, output, session) {
 
       filteredOutputCrossTable1 <- myOutputCrossTable[which(myOutputCrossTable$select1), ]
     } else{
+      
       filteredOutputCrossTable1 <- myOutputCrossTable
     }
     chosenDrugs <- rownames(filteredOutputCrossTable1)
     
+    if(input$candidateCategory == "longlist")  chosenDrugs <- intersect(longlistDrugs, chosenDrugs)
     return(chosenDrugs)
   })
   
@@ -49,7 +55,7 @@ shinyServer(function(input, output, session) {
   })
   
   output$studyTable <- DT::renderDataTable(DT::datatable({
-    myTable <-  filiteredPublicationTable()
+    myTable <-  filteredPublicationTable()
     myTable$Title <- paste0(myTable$Title, "(",myTable$Author,")")
     myTable$Title <- paste0("<a href='",myTable$Link ,"'target='_blank'>" , myTable$Title,"</a>" )
     
@@ -71,32 +77,32 @@ shinyServer(function(input, output, session) {
   ),
   extensions = c("Buttons", "Responsive"))
   
-  filiteredPublicationTable <- reactive({
+  filteredPublicationTable <- reactive({
     myOutputCrossTable <- frequencyCrossTable()
     chosenDrugs <- filteredDrugs()
     filteredClinicalStudyList <- filteredClinicalStudyList()
     chosenStudies <- filteredClinicalStudyList[filteredClinicalStudyList$Drug %in% chosenDrugs,] %>%
-      group_by(OldIdStr) %>%
+      group_by(idStr, nReviews) %>%
       summarise(Title = first(Title),
                 Author = first(Author),
                 Journal = first(Journal),
                 Abstract = first(Abstract),
                 Year = first(Year),
-                idStr = first(idStr),
-                HistoricalID = first(HistoricalID),
-                PublicationID = first(PublicationID),
                 Disease = paste0(unique(Disease), collapse = "; "),
                 Drug = paste0(unique(Drug), collapse = "; "),
                 MSType = paste0(unique(MSType), collapse = "; "),
                 Link = first(Link)
-      )
+      )%>%
+      arrange(nReviews, Drug)
     return(chosenStudies)
   })
   
+  
+  
   output$DownloadFilteredPublications <-  downloadHandler(
-    filename = "FilteredPublications.csv", content = function(file){
+    filename = paste0(Sys.Date(), "FilteredPublications.csv"), content = function(file){
       write.csv({
-        filiteredPublicationTable()
+        filteredPublicationTable()
       }
       , file, na = "", row.names = F
       )
@@ -107,26 +113,24 @@ shinyServer(function(input, output, session) {
     chosenDrugs <- rownames(myOutputCrossTable)[input$frequencyCrossTable_rows_selected]
     filteredClinicalStudyList <- filteredClinicalStudyList()
     chosenStudies <- filteredClinicalStudyList[filteredClinicalStudyList$Drug %in% chosenDrugs,] %>%
-      group_by(OldIdStr) %>%
+      group_by(idStr, nReviews) %>%
       summarise(Title = first(Title),
                 Author = first(Author),
                 Journal = first(Journal),
                 Abstract = first(Abstract),
                 Year = first(Year),
-                idStr = first(idStr),
-                HistoricalID = first(HistoricalID),
-                PublicationID = first(PublicationID),
-                Disease = paste0(Disease, collapse = "; "),
-                Drug = paste0(Drug, collapse = "; "),
-                MSType = paste0(MSType, collapse = "; "),
+                Disease = paste0(unique(Disease), collapse = "; "),
+                Drug = paste0(unique(Drug), collapse = "; "),
+                MSType = paste0(unique(MSType), collapse = "; "),
                 Link = first(Link)
-      )
+      )%>%
+      arrange(nReviews, Drug)
     return(chosenStudies)
   })
   
   output$DownloadSelectedPublications <-
     downloadHandler(
-      filename = "SelectedPublications.csv",
+      filename = paste0(Sys.Date(), "SelectedPublications.csv"),
       content = function(file){
         write.csv({
           selectedPublicationTable()
@@ -136,7 +140,7 @@ shinyServer(function(input, output, session) {
       }
     )
   
-  # filiteredPublicationTableinvivo <- reactive({
+  # filteredPublicationTableinvivo <- reactive({
   #   invivoStudyList <- ExtractinvivoStudies()
   #   chosenDrugs <- filteredDrugs()
   #   choseninvivoStudies <- invivoStudyList[invivoStudyList$Drug %in% chosenDrugs,] %>%
@@ -156,7 +160,7 @@ shinyServer(function(input, output, session) {
   # output$DownloadFilteredPublicationsinvivo <-  downloadHandler(
   #   filename = "invivoFilteredPublications.csv", content = function(file){
   #     write.csv({
-  #       filiteredPublicationTableinvivo()
+  #       filteredPublicationTableinvivo()
   #     }
   #     , file, na = "", row.names = F
   #     )
