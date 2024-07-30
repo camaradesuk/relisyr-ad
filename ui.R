@@ -19,19 +19,19 @@ shinyUI(fluidPage(
       column(
         3,
         selectInput(inputId = "candidateCategory", "Select type of candidate drugs", c("All Candidates in included publications" = "all", 
-                                                                                       "Candidates meeting ReLiSyR-AD logic" = "logicOnly"
-                                                                                        , 
+                                                                                       "Candidates meeting ReLiSyR-AD logic" = "logicOnly", 
+                                                                                       "Candidates with both clinical and animal studies" = "bothDomains",
                                                                                         "Longlisted candidates only" = "longlist"
         )),
         
         br(),hr(),
-        downloadButton("DownloadFilteredPublications", label = "Clinical publications for filtered drugs", class = "btn-info"),
+        downloadButton("DownloadFilteredClinicalPublications", label = "Clinical publications for filtered drugs", class = "btn-info"),
         br(),br(),
-        downloadButton("DownloadSelectedPublications", label = "Clinical publications for selected drugs", class = "btn-primary"),
+        downloadButton("DownloadSelectedClinicalPublications", label = "Clinical publications for selected drugs", class = "btn-primary"),
         hr(),
-        # downloadButton("DownloadFilteredPublicationsinvivo", label = "in vivo publications for filtered drugs", class = "btn-info"), 
-        # br(),br(),
-        # downloadButton("DownloadSelectedPublicationsinvivo", label = "in vivo publications for selected drugs", class = "btn-primary"),  
+        downloadButton("DownloadFilteredAnimalPublications", label = "Animal publications for filtered drugs", class = "btn-info"),
+        br(),br(),
+        downloadButton("DownloadSelectedAnimalPublications", label = "Animal publications for selected drugs", class = "btn-primary"),
         br(),br(),
         tags$p(textOutput("lastupdatetime"))
       )
@@ -41,7 +41,8 @@ shinyUI(fluidPage(
         ,
         tabsetPanel(type = "tabs",
                     tabPanel("Drug Disease Cross Table",   DT::dataTableOutput("frequencyCrossTable") %>% withSpinner(type = 5, color = "#2c3e50")),
-                    tabPanel("Study List",   DT::dataTableOutput("studyTable") %>% withSpinner(type = 5, color = "#2c3e50"))
+                    tabPanel("Clinical Study List",   DT::dataTableOutput("clinicalStudyTable") %>% withSpinner(type = 5, color = "#2c3e50")),
+                    tabPanel("Animal Study List",   DT::dataTableOutput("animalStudyTable") %>% withSpinner(type = 5, color = "#2c3e50"))
         )
       )),
     tabPanel(

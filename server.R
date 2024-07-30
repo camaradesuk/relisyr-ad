@@ -5,11 +5,11 @@ shinyServer(function(input, output, session) {
   })
   
   clinicalStudyList <- reactive({
-    RMySQL::dbReadTable(con, "ReLiSyRClinicalStudies") 
+    clinicalStudyList <- RMySQL::dbReadTable(con, "ReLiSyRClinicalStudies") 
   })
   
-  ExtractinvivoStudies <- reactive({
-    RMySQL::dbReadTable(con, "ReLiSyRinvivoStudies")
+ invivoStudies <- reactive({
+   invivoStudies<- RMySQL::dbReadTable(con, "ad_invivo_citations")
   })
   
   filteredClinicalStudyList <- reactive({
@@ -21,7 +21,7 @@ shinyServer(function(input, output, session) {
   
 
   
-  outputCrossTable <- reactive({
+  clinicalOutputCrossTable <- reactive({
     filteredClinicalStudyList <- filteredClinicalStudyList()
     filteredClinicalStudyList$Disease <- factor(filteredClinicalStudyList$Disease, levels = diseaseOfInterest)
     clinicalOutputCrossTable <- as.data.frame.matrix(table(filteredClinicalStudyList[,c("Drug","Disease")]))
@@ -29,33 +29,78 @@ shinyServer(function(input, output, session) {
     return(clinicalOutputCrossTable[, diseaseOfInterest])
   })
   
+  
+  invivoOutputTable <- reactive({
+    invivoOutputTable<- invivoStudies()%>%
+      group_by(intervention)%>%
+      summarise(invivo = length(unique(uid)))%>%
+      textshape::column_to_rownames("intervention")
+    return(invivoOutputTable)
+  })
+  
+  
+  combinedOutputCrossTable <- reactive({
+    combinedOutputCrossTable <- merge(invivoOutputTable(), 
+                                      clinicalOutputCrossTable(), 
+                                      by = 0, all = TRUE)%>%
+      textshape::column_to_rownames(1)
+    
+    combinedOutputCrossTable <- combinedOutputCrossTable%>%mutate(across(everything(),~tidyr::replace_na(., 0)))
+    
+    return(combinedOutputCrossTable)
+  })
+  
+  
   filteredDrugs <-  reactive({
-    myOutputCrossTable <- outputCrossTable()
+    myOutputCrossTable <- combinedOutputCrossTable()
     if(input$candidateCategory == "logicOnly"){
       myOutputCrossTable$select1  <- F
       myOutputCrossTable$score1 <- rowSums(myOutputCrossTable[, "AD", drop = F])
       myOutputCrossTable$score2 <- rowSums(myOutputCrossTable[, setdiff(diseaseOfInterest, "AD"), drop=F] > 0)
       myOutputCrossTable$select1 <- myOutputCrossTable$select | (myOutputCrossTable$score1 > 0 | myOutputCrossTable$score2 >= 2)
-
+      
       filteredOutputCrossTable1 <- myOutputCrossTable[which(myOutputCrossTable$select1), ]
-    } else{
+    } else if(input$candidateCategory == "bothDomains"){
+          myOutputCrossTable$score3<- rowSums(myOutputCrossTable[, diseaseOfInterest])
+          myOutputCrossTable <- myOutputCrossTable%>%mutate(select2 = ifelse(score3 >0 & invivo>0, TRUE, FALSE))
+          
+          filteredOutputCrossTable1 <- myOutputCrossTable[which(myOutputCrossTable$select2), ]
+    } else {
       
       filteredOutputCrossTable1 <- myOutputCrossTable
     }
+    
     chosenDrugs <- rownames(filteredOutputCrossTable1)
     
     if(input$candidateCategory == "longlist")  chosenDrugs <- intersect(longlistDrugs, chosenDrugs)
     return(chosenDrugs)
   })
   
+  
   frequencyCrossTable <- reactive({
-    myOutputCrossTable <- outputCrossTable()
+    myOutputCrossTable <- combinedOutputCrossTable()
     filteredDrugs <- filteredDrugs()
     return(myOutputCrossTable[filteredDrugs, ])
   })
   
-  output$studyTable <- DT::renderDataTable(DT::datatable({
-    myTable <-  filteredPublicationTable()
+  output$clinicalStudyTable <- DT::renderDataTable(DT::datatable({
+    myTable <-  filteredClinicalPublicationTable()
+    myTable$Title <- paste0(myTable$Title, "(",myTable$Author,")")
+    myTable$Title <- paste0("<a href='",myTable$Link ,"'target='_blank'>" , myTable$Title,"</a>" )
+    
+    index <- which(names(myTable) %in% c("X","Journal","Abstract","OldIdStr", "idStr", "Author","Link"))
+    return(   
+      myTable[,-index]
+    )
+  }) ,extensions = 'Buttons'
+  , filter = 'top', options = list(
+    pageLength = 10,lengthMenu = c(10,25,50,100,1000),autoWidth = TRUE
+  ), escape=F) 
+  
+  
+  
+  output$animalStudyTable <- DT::renderDataTable(DT::datatable({
+    myTable <-  filteredAnimalPublicationTable()
     myTable$Title <- paste0(myTable$Title, "(",myTable$Author,")")
     myTable$Title <- paste0("<a href='",myTable$Link ,"'target='_blank'>" , myTable$Title,"</a>" )
     
@@ -77,7 +122,7 @@ shinyServer(function(input, output, session) {
   ),
   extensions = c("Buttons", "Responsive"))
   
-  filteredPublicationTable <- reactive({
+  filteredClinicalPublicationTable <- reactive({
     myOutputCrossTable <- frequencyCrossTable()
     chosenDrugs <- filteredDrugs()
     filteredClinicalStudyList <- filteredClinicalStudyList()
@@ -98,17 +143,18 @@ shinyServer(function(input, output, session) {
   })
   
   
+
   
-  output$DownloadFilteredPublications <-  downloadHandler(
-    filename = paste0(Sys.Date(), "FilteredPublications.csv"), content = function(file){
+  output$DownloadFilteredClinicalPublications <-  downloadHandler(
+    filename = paste0(Sys.Date(), "FilteredClinicalPublications.csv"), content = function(file){
       write.csv({
-        filteredPublicationTable()
+        filteredClinicalPublicationTable()
       }
       , file, na = "", row.names = F
       )
     })
   
-  selectedPublicationTable <- reactive({
+  selectedClinicalPublicationTable <- reactive({
     myOutputCrossTable <- frequencyCrossTable()
     chosenDrugs <- rownames(myOutputCrossTable)[input$frequencyCrossTable_rows_selected]
     filteredClinicalStudyList <- filteredClinicalStudyList()
@@ -128,72 +174,77 @@ shinyServer(function(input, output, session) {
     return(chosenStudies)
   })
   
-  output$DownloadSelectedPublications <-
+  output$DownloadSelectedClinicalPublications <-
     downloadHandler(
-      filename = paste0(Sys.Date(), "SelectedPublications.csv"),
+      filename = paste0(Sys.Date(), "SelectedClinicalPublications.csv"),
       content = function(file){
         write.csv({
-          selectedPublicationTable()
+          selectedClinicalPublicationTable()
         }
         , file, na = "", row.names = F
         )
       }
     )
   
-  # filteredPublicationTableinvivo <- reactive({
-  #   invivoStudyList <- ExtractinvivoStudies()
-  #   chosenDrugs <- filteredDrugs()
-  #   choseninvivoStudies <- invivoStudyList[invivoStudyList$Drug %in% chosenDrugs,] %>%
-  #     group_by(idStr) %>%
-  #     summarise(Title = first(Title),
-  #               Author = first(Author),
-  #               Journal = first(Journal),
-  #               Abstract = first(Abstract),
-  #               Year = first(Year),
-  #               Disease = paste0(Disease, collapse = "; "),
-  #               Drug = paste0(Drug, collapse = "; ")
-  #     )
-  #   
-  #   return(choseninvivoStudies)
-  # })
-  # 
-  # output$DownloadFilteredPublicationsinvivo <-  downloadHandler(
-  #   filename = "invivoFilteredPublications.csv", content = function(file){
-  #     write.csv({
-  #       filteredPublicationTableinvivo()
-  #     }
-  #     , file, na = "", row.names = F
-  #     )
-  #   })
-  # 
-  # selectedPublicationTableinvivo <- reactive({
-  #   invivoStudyList <- ExtractinvivoStudies()
-  #   myOutputCrossTable <- frequencyCrossTable()
-  #   
-  #   chosenDrugs <- rownames(myOutputCrossTable)[input$frequencyCrossTable_rows_selected] 
-  #   choseninvivoStudies <- invivoStudyList[invivoStudyList$Drug %in% chosenDrugs,] %>%
-  #     group_by(idStr) %>%
-  #     summarise(Title = first(Title),
-  #               Author = first(Author),
-  #               Journal = first(Journal),
-  #               Abstract = first(Abstract),
-  #               Year = first(Year),
-  #               Disease = paste0(Disease, collapse = "; "),
-  #               Drug = paste0(Drug, collapse = "; ")
-  #     )
-  #   
-  #   return(choseninvivoStudies)
-  # })
-  # 
-  # output$DownloadSelectedPublicationsinvivo <-
-  #   downloadHandler(
-  #     filename = "invivoSelectedPublications.csv",
-  #     content = function(file){
-  #       write.csv({
-  #         selectedPublicationTableinvivo()
-  #       }
-  #       , file, na = "", row.names = F
-  #       )
-  #     }
-  #   )
+  
+  filteredAnimalPublicationTable <- reactive({
+    myOutputCrossTable <- frequencyCrossTable()
+    chosenDrugs <- filteredDrugs()
+    invivoStudies <- invivoStudies()
+    chosenStudies <- invivoStudies[invivoStudies$intervention %in% chosenDrugs,] %>%
+      group_by(uid) %>%
+      summarise(Title = first(title),
+                Author = first(author),
+                Journal = first(journal),
+                Abstract = first(abstract),
+                Year = first(year),
+                Drug = paste0(unique(intervention), collapse = "; "),
+                Link = first(doi)
+      )%>%
+      arrange(Drug)
+    return(chosenStudies)
+  })
+  
+  output$DownloadFilteredAnimalPublications<-  downloadHandler(
+    filename = "FilteredAnimalPublications.csv", content = function(file){
+      write.csv({
+        filteredAnimalPublicationTable()
+      }
+      , file, na = "", row.names = F
+      )
+    })
+  
+  
+  
+  selectedAnimalPublicationTable <- reactive({
+    myOutputCrossTable <- frequencyCrossTable()
+    chosenDrugs <- rownames(myOutputCrossTable)[input$frequencyCrossTable_rows_selected]
+    invivoStudies <- invivoStudies()
+    chosenStudies <- invivoStudies[invivoStudies$intervention %in% chosenDrugs,] %>%
+      group_by(uid) %>%
+      summarise(Title = first(title),
+                Author = first(author),
+                Journal = first(journal),
+                Abstract = first(abstract),
+                Year = first(year),
+                Drug = paste0(unique(intervention), collapse = "; "),
+                Link = first(doi)
+      )%>%
+      arrange(Drug)
+    return(chosenStudies)
+  })
+  
+  
+
+  output$DownloadSelectedAnimalPublications<-
+    downloadHandler(
+      filename = "SelectedAnimalPublications.csv",
+      content = function(file){
+        write.csv({
+          selectedAnimalPublicationTable()
+        }
+        , file, na = "", row.names = F
+        )
+      }
+    )
 })

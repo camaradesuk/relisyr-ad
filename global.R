@@ -5,6 +5,7 @@ library(DT)
 library(googlesheets4)
 library(dplyr)
 library(shinycssloaders)
+library(tidyr)
 
 source('configure.R')
 
