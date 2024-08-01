@@ -1,4 +1,94 @@
 shinyServer(function(input, output, session) {
+  #project dashboard----
+  progressSummary <-reactive({
+    progressSummary <-googlesheets4::read_sheet(Sys.getenv("relisyr_ad_gsheet"), 
+                                                        sheet = "progressSummary")  
+    })
+  
+  createStatistics <- function(progressSummary,irow){
+    reviewSummary = progressSummary[irow, ]
+    list(
+      UpdateDate = reviewSummary$lastUpdate,
+      nUniquePubs = reviewSummary$nUniquePublications,
+      nIncludedPubs =      reviewSummary$nIncludedPublications,
+      nDrugMeetLogic = reviewSummary$nDrugMeetLogic,
+      nPublicationsMeetLogic = reviewSummary$nPublicationsMeetLogic,
+      nCoreDrugs = reviewSummary$nCoreDrugs,
+      nCoreDrugsPubs =  reviewSummary$nCoreDrugPublications,
+      nSingleAnnotated = reviewSummary$nSingleAnnotated,
+      percentSingleAnnotated =  round(reviewSummary$nSingleAnnotated / reviewSummary$nCoreDrugPublications * 100,2),
+      nDualAnnotated = reviewSummary$nDualAnnotated,
+      percentDualAnnotated =  round(reviewSummary$nDualAnnotated / reviewSummary$nCoreDrugPublications * 100,2),
+      nReconciled = reviewSummary$nReconciled,
+      percentReconciled = round(reviewSummary$nReconciled / reviewSummary$nCoreDrugPublications * 100,2)
+    )
+  }
+  
+  clinicalStatistics <- reactive({
+    progressSummary<-progressSummary()
+    clinicalStatistics <- createStatistics(progressSummary, 1)    
+    })
+  
+  invivoStatistics <- reactive({   
+    progressSummary<-progressSummary()
+    invivoStatistics <-createStatistics(progressSummary, 2)    
+    })
+  
+  clinicalprisma <- reactive({
+    clinicalStatistics <- clinicalStatistics()
+    clinicalprisma <- createPrisma(clinicalStatistics)
+    return(clinicalprisma)
+  })
+
+
+  output$clinicalPrismaOutput <- renderGrViz({
+    grViz({
+      clinicalprisma()
+    })
+  })
+  
+  invivoprisma <- reactive({
+    invivoStatistics <- invivoStatistics()
+    invivoprisma <- createPrisma(invivoStatistics)
+    return(invivoprisma)
+  })
+  
+  
+  output$animalPrismaOutput <- renderGrViz({
+    grViz({
+      invivoprisma()
+    })
+  })
+  # 
+  ## drug prioritisation ----
+  longlistedDrugs <- reactive({
+    longlistedDrugs <- read_sheet(Sys.getenv("relisyr_ad_gsheet"), 'longlist')
+    
+  })
+  
+  output$currentLonglist<- DT::renderDataTable(DT::datatable({
+    longlistTable <- longlistedDrugs()
+    return(longlistTable)
+    
+  }), extensions = 'Buttons'
+  , filter = 'top', 
+  options = list(
+    pageLength = 50, lengthMenu = c(10,25,50,100,1000), escape=F)) 
+  
+  # output$clinicalStudyTable <- DT::renderDataTable(DT::datatable({
+  #   myTable <-  filteredClinicalPublicationTable()
+  #   myTable$Title <- paste0(myTable$Title, "(",myTable$Author,")")
+  #   myTable$Title <- paste0("<a href='",myTable$Link ,"'target='_blank'>" , myTable$Title,"</a>" )
+  #   
+  #   index <- which(names(myTable) %in% c("X","Journal","Abstract","OldIdStr", "idStr", "Author","Link"))
+  #   return(   
+  #     myTable[,-index]
+  #   )
+  # }) ,extensions = 'Buttons'
+  # , filter = 'top', options = list(
+  #   pageLength = 10,lengthMenu = c(10,25,50,100,1000),autoWidth = TRUE
+  # ), escape=F) 
+  
   
   output$lastupdatetime <- reactive({
     return(paste0("Data last updated on ", format(as.Date(lastupdatetime), "%Y-%m-%d")))
@@ -194,16 +284,25 @@ shinyServer(function(input, output, session) {
     chosenStudies <- invivoStudies[invivoStudies$intervention %in% chosenDrugs,] %>%
       group_by(uid) %>%
       summarise(Title = first(title),
-                Author = first(author),
-                Journal = first(journal),
+                Authors = first(author),
+                PublicationName = first(journal),
                 Abstract = first(abstract),
                 Year = first(year),
-                Drug = paste0(unique(intervention), collapse = "; "),
-                Link = first(doi)
+                DOI = first(doi),
+                AlternateName = first(secondarytitle),
+                Url = first(url),
+                AuthorAddress = first(author_affiliation),
+                ReferenceType = first(ptype),
+                Keywords = first(keywords),
+                PDFRelativePath = "",
+                CustomId = uid,
+                Drug = paste0(unique(intervention), collapse = "; ")
       )%>%
-      arrange(Drug)
+      arrange(Drug)%>%
+      select(-uid)
     return(chosenStudies)
   })
+
   
   output$DownloadFilteredAnimalPublications<-  downloadHandler(
     filename = "FilteredAnimalPublications.csv", content = function(file){
@@ -223,14 +322,22 @@ shinyServer(function(input, output, session) {
     chosenStudies <- invivoStudies[invivoStudies$intervention %in% chosenDrugs,] %>%
       group_by(uid) %>%
       summarise(Title = first(title),
-                Author = first(author),
-                Journal = first(journal),
+                Authors = first(author),
+                PublicationName = first(journal),
                 Abstract = first(abstract),
                 Year = first(year),
-                Drug = paste0(unique(intervention), collapse = "; "),
-                Link = first(doi)
+                DOI = first(doi),
+                AlternateName = first(secondarytitle),
+                Url = first(url),
+                AuthorAddress = first(author_affiliation),
+                ReferenceType = first(ptype),
+                Keywords = first(keywords),
+                PDFRelativePath = "",
+                CustomId = uid,
+                Drug = paste0(unique(intervention), collapse = "; ")
       )%>%
-      arrange(Drug)
+      arrange(Drug)%>%
+      select(-uid)
     return(chosenStudies)
   })
   

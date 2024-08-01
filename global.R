@@ -2,12 +2,15 @@ library(shiny)
 library(shinythemes)
 library(shinyWidgets)
 library(DT)
+library(DiagrammeR)
+library(glue)
 library(googlesheets4)
 library(dplyr)
 library(shinycssloaders)
 library(tidyr)
 
 source('configure.R')
+source('functions.R')
 
 log <- googlesheets4::read_sheet(sheetId, sheet="log")
 lastupdatetime <- max(log$UpdateTime)
@@ -16,7 +19,9 @@ entityOfInterest <- googlesheets4::read_sheet(sheetId, sheet="entityOfInterest")
 
 diseaseOfInterest <- entityOfInterest[entityOfInterest$Type == "diseaseOfInterest", ]$Item
 
-longlistDrugs <- entityOfInterest[entityOfInterest$Type == "drugOfInterestAD", ]$Item
+
+longlistDrugs <- read_sheet(Sys.getenv("relisyr_ad_gsheet"), 'longlist')$Drug
+# longlistDrugs <- entityOfInterest[entityOfInterest$Type == "drugOfInterestAD", ]$Item
 
 reviewerSession <- googlesheets4::read_sheet(sheetId, sheet = "reviewerSession")
 reviewStage <- reviewerSession%>%

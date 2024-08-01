@@ -13,8 +13,30 @@ shinyUI(fluidPage(
   theme = shinytheme("flatly"),
   navbarPage(
     "ReLiSyR-AD",
+    tabPanel("Project Dashboard",
+             tabsetPanel(type = "tabs",
+                         
+                         tabPanel("Clinical",
+                                  grVizOutput('clinicalPrismaOutput', width = "50%", height = "500px")%>% withSpinner(color="#0dc5c1"),
+                                  ),
+                         tabPanel("Animal",
+                                  grVizOutput('animalPrismaOutput', width = "50%", height = "500px")%>% withSpinner(color="#0dc5c1"),
+                         ),
+                         tabPanel("Drug prioritisation",
+                                  
+                                  h2("Current longlist"),
+                                  DT::dataTableOutput("currentLonglist")
+                                  
+                                  
+                                  )
+                         )
+
+             
+             ),
+    
+    
     tabPanel(
-      "Home"
+      "Drug List"
       ,
       column(
         3,
