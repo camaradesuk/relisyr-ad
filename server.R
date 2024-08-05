@@ -75,21 +75,6 @@ shinyServer(function(input, output, session) {
   options = list(
     pageLength = 50, lengthMenu = c(10,25,50,100,1000), escape=F)) 
   
-  # output$clinicalStudyTable <- DT::renderDataTable(DT::datatable({
-  #   myTable <-  filteredClinicalPublicationTable()
-  #   myTable$Title <- paste0(myTable$Title, "(",myTable$Author,")")
-  #   myTable$Title <- paste0("<a href='",myTable$Link ,"'target='_blank'>" , myTable$Title,"</a>" )
-  #   
-  #   index <- which(names(myTable) %in% c("X","Journal","Abstract","OldIdStr", "idStr", "Author","Link"))
-  #   return(   
-  #     myTable[,-index]
-  #   )
-  # }) ,extensions = 'Buttons'
-  # , filter = 'top', options = list(
-  #   pageLength = 10,lengthMenu = c(10,25,50,100,1000),autoWidth = TRUE
-  # ), escape=F) 
-  
-  
   output$lastupdatetime <- reactive({
     return(paste0("Data last updated on ", format(as.Date(lastupdatetime), "%Y-%m-%d")))
   })
@@ -140,6 +125,22 @@ shinyServer(function(input, output, session) {
     return(combinedOutputCrossTable)
   })
   
+
+  feasibleFilterDrugs <- reactive ({
+    feasibleFilterDrugs<- masterDrugList %>%
+      dplyr::select(Name, input$feasibilityFilter)%>%
+      filter(if_all(where(is.logical)), TRUE)
+    feasibleFilterDrugs <- feasibleFilterDrugs$Name
+    return(feasibleFilterDrugs)
+  })
+  
+  ro5passDrugs <- reactive({
+    ro5passDrugs <- masterDrugList%>%
+      filter(ro5Violations <= input$ro5violation | is.na(ro5Violations))
+    
+    ro5passDrugs <- ro5passDrugs$Name
+    return(ro5passDrugs)
+  })
   
   filteredDrugs <-  reactive({
     myOutputCrossTable <- combinedOutputCrossTable()
@@ -163,6 +164,10 @@ shinyServer(function(input, output, session) {
     chosenDrugs <- rownames(filteredOutputCrossTable1)
     
     if(input$candidateCategory == "longlist")  chosenDrugs <- intersect(longlistDrugs, chosenDrugs)
+    
+    chosenDrugs <- intersect(chosenDrugs, feasibleFilterDrugs())
+    chosenDrugs <- intersect(chosenDrugs, ro5passDrugs())
+    
     return(chosenDrugs)
   })
   

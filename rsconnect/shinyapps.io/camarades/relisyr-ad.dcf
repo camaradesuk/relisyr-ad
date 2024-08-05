@@ -5,7 +5,7 @@ account: camarades
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 11775863
-bundleId: 8936042
+bundleId: 8946014
 url: https://camarades.shinyapps.io/relisyr-ad/
 version: 1
 asMultiple: FALSE

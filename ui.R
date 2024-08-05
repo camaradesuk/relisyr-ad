@@ -46,6 +46,21 @@ shinyUI(fluidPage(
                                                                                         "Longlisted candidates only" = "longlist"
         )),
         
+        checkboxGroupInput(inputId = "feasibilityFilter", "Filter drugs by:", c("Available in oral formulation (ChEMBL)" = "oral",
+                                                                    "Prescription only status (ChEMBL)" = "prescription_only",
+                                                                    "Approved drug (ChEMBL)" = "approved",
+                                                                    "Predicted BBB penetrant according to B3DB or admetSAR" = "BBB",
+                                                                    "Listed in BNF" = "BNF",
+                                                                    "Generic formulation listed in BNF" = "BNFgeneric"
+                                                                    )),
+        
+        sliderInput(inputId = "ro5violation", 
+                    "Exclude drugs with more than X Lipinski's rule of 5 violations (predictive of oral bioavailability)",
+                    min = 0,
+                    max = 5, 
+                    value = 5,
+                    step = 1),
+        
         br(),hr(),
         downloadButton("DownloadFilteredClinicalPublications", label = "Clinical publications for filtered drugs", class = "btn-info"),
         br(),br(),

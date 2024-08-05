@@ -29,3 +29,8 @@ reviewStage <- reviewerSession%>%
   group_by(StudyIdStr)%>%
   summarise(nReviews = length(InvestigatorIdStr))%>%
   rename(idStr = StudyIdStr)
+
+masterDrugList <- read.csv("2024-08-04masterDrugList.csv") %>%
+  mutate(approved = ifelse(max_phase==4, TRUE, FALSE),
+         prescription_only = ifelse(availability_type == 1, TRUE, FALSE)
+         )
