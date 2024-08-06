@@ -166,7 +166,7 @@ shinyServer(function(input, output, session) {
     if(input$candidateCategory == "longlist")  chosenDrugs <- intersect(longlistDrugs, chosenDrugs)
     
     chosenDrugs <- intersect(chosenDrugs, feasibleFilterDrugs())
-    chosenDrugs <- intersect(chosenDrugs, ro5passDrugs())
+    if(input$ro5 == TRUE) chosenDrugs <- intersect(chosenDrugs, ro5passDrugs())
     
     return(chosenDrugs)
   })
@@ -177,6 +177,34 @@ shinyServer(function(input, output, session) {
     filteredDrugs <- filteredDrugs()
     return(myOutputCrossTable[filteredDrugs, ])
   })
+  
+  
+  outputTable <- reactive({
+    frequencyCrossTable <- frequencyCrossTable()
+    frequencyCrossTable$Name <- row.names(frequencyCrossTable)
+    outputTable <- left_join(frequencyCrossTable, drugDatabaseOutput, by = "Name")%>%unique()
+    outputTable <- outputTable%>%
+      textshape::column_to_rownames("Name")
+    return(outputTable)
+  })
+  
+  
+  output$outputTable <- DT::renderDataTable(
+    DT::datatable(
+      outputTable(),
+    filter = "top", 
+    options = list(dom = 'lfrtBip',
+                   columnDefs = list(list(visible = FALSE, targets = c(8:ncol(outputTable())))),
+                   searching = TRUE,
+                   buttons = c('copy', 'csv', 'excel', 'pdf'),
+                   pageLength=25, 
+                   lengthMenu= list(c(10, 25, 50, 100, -1),
+                                    c("10", "25", "50", "100", "All"))
+    ), 
+    extensions = c("Responsive", "Buttons")))
+    # , 
+
+
   
   output$clinicalStudyTable <- DT::renderDataTable(DT::datatable({
     myTable <-  filteredClinicalPublicationTable()
@@ -208,15 +236,7 @@ shinyServer(function(input, output, session) {
     pageLength = 10,lengthMenu = c(10,25,50,100,1000),autoWidth = TRUE
   ), escape=F) 
   
-  output$frequencyCrossTable <- DT::renderDataTable(DT::datatable({
-    return(    frequencyCrossTable())
-  }), 
-  filter = 'top', options = list(
-    pageLength = 50,lengthMenu = c(10,25,50,100,1000)
-    , dom = 'Blfrtip', buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
-  ),
-  extensions = c("Buttons", "Responsive"))
-  
+
   filteredClinicalPublicationTable <- reactive({
     myOutputCrossTable <- frequencyCrossTable()
     chosenDrugs <- filteredDrugs()
@@ -250,8 +270,8 @@ shinyServer(function(input, output, session) {
     })
   
   selectedClinicalPublicationTable <- reactive({
-    myOutputCrossTable <- frequencyCrossTable()
-    chosenDrugs <- rownames(myOutputCrossTable)[input$frequencyCrossTable_rows_selected]
+    myOutputCrossTable <- outputTable()
+    chosenDrugs <- rownames(myOutputCrossTable)[input$outputTable_rows_selected]
     filteredClinicalStudyList <- filteredClinicalStudyList()
     chosenStudies <- filteredClinicalStudyList[filteredClinicalStudyList$Drug %in% chosenDrugs,] %>%
       group_by(idStr, nReviews) %>%
@@ -321,8 +341,8 @@ shinyServer(function(input, output, session) {
   
   
   selectedAnimalPublicationTable <- reactive({
-    myOutputCrossTable <- frequencyCrossTable()
-    chosenDrugs <- rownames(myOutputCrossTable)[input$frequencyCrossTable_rows_selected]
+    myOutputCrossTable <- outputTable()
+    chosenDrugs <- rownames(myOutputCrossTable)[input$outputTable_rows_selected]
     invivoStudies <- invivoStudies()
     chosenStudies <- invivoStudies[invivoStudies$intervention %in% chosenDrugs,] %>%
       group_by(uid) %>%

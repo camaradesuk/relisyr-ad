@@ -18,7 +18,7 @@ shinyUI(fluidPage(
                          
                          tabPanel("Clinical",
                                   grVizOutput('clinicalPrismaOutput', width = "50%", height = "500px")%>% withSpinner(color="#0dc5c1"),
-                                  ),
+                         ),
                          tabPanel("Animal",
                                   grVizOutput('animalPrismaOutput', width = "50%", height = "500px")%>% withSpinner(color="#0dc5c1"),
                          ),
@@ -28,11 +28,11 @@ shinyUI(fluidPage(
                                   DT::dataTableOutput("currentLonglist")
                                   
                                   
-                                  )
                          )
-
+             )
              
-             ),
+             
+    ),
     
     
     tabPanel(
@@ -43,23 +43,25 @@ shinyUI(fluidPage(
         selectInput(inputId = "candidateCategory", "Select type of candidate drugs", c("All Candidates in included publications" = "all", 
                                                                                        "Candidates meeting ReLiSyR-AD logic" = "logicOnly", 
                                                                                        "Candidates with both clinical and animal studies" = "bothDomains",
-                                                                                        "Longlisted candidates only" = "longlist"
+                                                                                       "Longlisted candidates only" = "longlist"
         )),
         
         checkboxGroupInput(inputId = "feasibilityFilter", "Filter drugs by:", c("Available in oral formulation (ChEMBL)" = "oral",
-                                                                    "Prescription only status (ChEMBL)" = "prescription_only",
-                                                                    "Approved drug (ChEMBL)" = "approved",
-                                                                    "Predicted BBB penetrant according to B3DB or admetSAR" = "BBB",
-                                                                    "Listed in BNF" = "BNF",
-                                                                    "Generic formulation listed in BNF" = "BNFgeneric"
-                                                                    )),
+                                                                                "Prescription only status (ChEMBL)" = "prescription_only",
+                                                                                "Approved drug (ChEMBL)" = "approved",
+                                                                                "Predicted BBB penetrant according to B3DB or admetSAR3.0" = "BBB",
+                                                                                "Listed in BNF" = "BNF",
+                                                                                "Generic formulation listed in BNF" = "BNFgeneric" 
+        )),
+        checkboxInput(inputId = "ro5", "Exclude drugs with more than X Lipinski's rule of 5 violations (predictive of oral bioavailability). Data from ChEMBL and admetSAR3.0", value = FALSE ),
         
-        sliderInput(inputId = "ro5violation", 
-                    "Exclude drugs with more than X Lipinski's rule of 5 violations (predictive of oral bioavailability)",
-                    min = 0,
-                    max = 5, 
-                    value = 5,
-                    step = 1),
+        conditionalPanel(condition = "input.ro5 == true",
+                         sliderInput(inputId = "ro5violation", 
+                                     "",
+                                     min = 0,
+                                     max = 4, 
+                                     value = 4,
+                                     step = 1)),
         
         br(),hr(),
         downloadButton("DownloadFilteredClinicalPublications", label = "Clinical publications for filtered drugs", class = "btn-info"),
@@ -77,7 +79,7 @@ shinyUI(fluidPage(
         9
         ,
         tabsetPanel(type = "tabs",
-                    tabPanel("Drug Disease Cross Table",   DT::dataTableOutput("frequencyCrossTable") %>% withSpinner(type = 5, color = "#2c3e50")),
+                    tabPanel("Drug Disease Cross Table",   DT::dataTableOutput("outputTable") %>% withSpinner(type = 5, color = "#2c3e50")),
                     tabPanel("Clinical Study List",   DT::dataTableOutput("clinicalStudyTable") %>% withSpinner(type = 5, color = "#2c3e50")),
                     tabPanel("Animal Study List",   DT::dataTableOutput("animalStudyTable") %>% withSpinner(type = 5, color = "#2c3e50"))
         )
@@ -121,14 +123,14 @@ shinyUI(fluidPage(
           tags$li("Animal invivo review and in vitro review: An individual meta‐analysis will be carried out for each intervention identified. We will summarise the effects of interventions where there are 3 or more publications in which that intervention has been tested reporting findings from at least 5 experiments. Depending on the nature of the outcomes reported we will use either standardised mean difference (SMD) or normalised mean difference (NMD) random effects meta-analysis with REML estimates of tau. Specifically, if fewer than 70% of outcomes are suitable for NMD analysis we will use SMD. Differences between groups of studies will be identified using meta-regression."
           )
         )),
-    
-    h3("About us"),
-    p("The", tags$a(href="https://www.ed.ac.uk/clinical-brain-sciences/research/camarades/", "CAMARADES"), "(Collaborative Approach to Meta-Analysis and Review of 
+      
+      h3("About us"),
+      p("The", tags$a(href="https://www.ed.ac.uk/clinical-brain-sciences/research/camarades/", "CAMARADES"), "(Collaborative Approach to Meta-Analysis and Review of 
                      Animal Data from Experimental Studies) group specialise in performing", strong("systematic review and meta-analysis"), "of data
                      from experimental studies. Our interests range from identifying potential sources of bias in in vivo and in vitro studies; 
                      developing automation tools for evidence synthesis; developing recommendations for improvements in the design and
                      reporting; through to developing meta-analysis methodology to better apply to in basic research studies."),
-    p("Follow us on twitter", tags$a(href="https://twitter.com/camarades_?", "@CAMARADES_")))
+      p("Follow us on twitter", tags$a(href="https://twitter.com/camarades_?", "@CAMARADES_")))
     
     
     
