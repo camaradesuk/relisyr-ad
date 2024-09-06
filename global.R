@@ -19,7 +19,7 @@ entityOfInterest <- googlesheets4::read_sheet(sheetId, sheet="entityOfInterest")
 
 diseaseOfInterest <- entityOfInterest[entityOfInterest$Type == "diseaseOfInterest", ]$Item
 
-longlistDrugs <- read_sheet(Sys.getenv("relisyr_ad_gsheet"), 'longlist')$Drug
+# longlistDrugs <- read_sheet(Sys.getenv("relisyr_ad_gsheet"), 'longlist')$Drug
 
 reviewerSession <- googlesheets4::read_sheet(sheetId, sheet = "reviewerSession")
 reviewStage <- reviewerSession%>%
@@ -32,6 +32,7 @@ masterDrugList <- read.csv("2024-08-06masterDrugList.csv") %>%
   mutate(approved = ifelse(max_phase==4, TRUE, FALSE),
          prescription_only = ifelse(availability_type == 1, TRUE, FALSE)
          )
+masterDrugList$Name[masterDrugList$Name == "lithium"] = "Lithium"
 
 
 masterDrugList <-masterDrugList %>% 

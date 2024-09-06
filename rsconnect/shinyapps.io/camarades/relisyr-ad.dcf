@@ -5,9 +5,8 @@ account: camarades
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 11775863
-bundleId: 8953749
+bundleId: 9070122
 url: https://camarades.shinyapps.io/relisyr-ad/
 version: 1
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: 2024-08-04masterDrugList.csv

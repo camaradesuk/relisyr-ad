@@ -81,10 +81,14 @@ shinyServer(function(input, output, session) {
   
   clinicalStudyList <- reactive({
     clinicalStudyList <- RMySQL::dbReadTable(con, "ReLiSyRClinicalStudies") 
-  })
+    clinicalStudyList$Drug[clinicalStudyList$Drug == "lithium"] = "Lithium"
+    return(clinicalStudyList)
+    })
   
  invivoStudies <- reactive({
    invivoStudies<- RMySQL::dbReadTable(con, "ad_invivo_citations")
+   # invivoStudies$intervention[invivoStudies$intervention == "lithium"] = "Lithium"
+   
   })
   
   filteredClinicalStudyList <- reactive({
@@ -163,7 +167,7 @@ shinyServer(function(input, output, session) {
     
     chosenDrugs <- rownames(filteredOutputCrossTable1)
     
-    if(input$candidateCategory == "longlist")  chosenDrugs <- intersect(longlistDrugs, chosenDrugs)
+    if(input$candidateCategory == "longlist")  chosenDrugs <- intersect(longlistedDrugs()$Drug, chosenDrugs)
     
     chosenDrugs <- intersect(chosenDrugs, feasibleFilterDrugs())
     if(input$ro5 == TRUE) chosenDrugs <- intersect(chosenDrugs, ro5passDrugs())
